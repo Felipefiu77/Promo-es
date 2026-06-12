@@ -1,0 +1,3 @@
+apify-client==1.7.1
+apify-shared==1.1.2
+httpx==0.27.0
