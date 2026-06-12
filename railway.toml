@@ -1,0 +1,13 @@
+# railway.toml — configuração para deploy no Railway
+
+[build]
+builder = "NIXPACKS"
+
+[deploy]
+startCommand = "python main.py"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 3
+
+# Agendamento: executa a cada 2 horas
+# Configure no painel Railway em: Settings > Cron Jobs
+# Expressão cron: 0 */2 * * *
