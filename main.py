@@ -36,7 +36,7 @@ DAS_MENSAL        = 87.05
 PEDIDOS_MES       = int(os.getenv("PEDIDOS_MES", "40"))
 TAXA_ML_PCT       = 0.16       # Clássico
 TAXA_ML_FIXO      = 6.00
-MARGEM_MINIMA     = 0.05       # 5% (temporario para teste)
+MARGEM_MINIMA     = 0.15       # 15%
 
 # Categorias que você vende
 CATEGORIAS = [
@@ -166,10 +166,11 @@ def coletar_shopee() -> list[dict]:
 def calcular_margem(preco_compra: float, preco_venda: float) -> dict:
     """
     Calcula margem líquida para MEI Comércio revendendo no ML.
-    Preço de venda sugerido = preco_compra * 1.5 (markup 50%) se não informado.
+    Preço de venda = preco_compra * 1.5 (markup 50%) sempre.
+    O preco_compra é o preço que encontramos na promoção.
     """
-    if preco_venda <= 0:
-        preco_venda = preco_compra * 1.5
+    # Sempre usar markup 50% sobre o preço de compra
+    preco_venda = preco_compra * 1.5
 
     taxa_ml     = preco_venda * TAXA_ML_PCT + TAXA_ML_FIXO
     das_rateado = DAS_MENSAL / PEDIDOS_MES
