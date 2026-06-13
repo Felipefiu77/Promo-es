@@ -52,19 +52,24 @@ def coletar_amazon() -> list[dict]:
     """Coleta ofertas da Amazon Brasil via Apify."""
     client = ApifyClient(APIFY_TOKEN)
     log.info("Coletando Amazon...")
+    # URLs de busca da Amazon Brasil por categoria
+    urls_amazon = [
+        "https://www.amazon.com.br/s?k=eletronicos&deals-widget=%257B%2522version%2522%253A1%257D",
+        "https://www.amazon.com.br/s?k=esporte+lazer&deals-widget=%257B%2522version%2522%253A1%257D",
+        "https://www.amazon.com.br/s?k=casa+jardim&deals-widget=%257B%2522version%2522%253A1%257D",
+    ]
     todos = []
-    for keyword in CATEGORIAS[:3]:  # limitar para economizar creditos
+    for url in urls_amazon:
         try:
-            run = client.actor("apify~amazon-product-scraper").call(run_input={
-                "countryCode": "BR",
-                "searchKeyword": keyword,
+            run = client.actor("dtrungtin~amazon-scraper").call(run_input={
+                "startUrls": [{"url": url}],
                 "maxItems": 8,
             })
             items = list(client.dataset(run["defaultDatasetId"]).iterate_items())
             for i in items:
                 preco = i.get("price") or i.get("salePrice") or 0
                 try:
-                    preco = float(str(preco).replace("R$","").replace(".","").replace(",",".").strip())
+                    preco = float(str(preco).replace("R$","").replace(",","").replace(".","",1).strip())
                 except:
                     preco = 0
                 if preco > 0:
@@ -74,10 +79,10 @@ def coletar_amazon() -> list[dict]:
                         "preco": preco,
                         "preco_original": preco,
                         "url": str(i.get("url") or i.get("link") or ""),
-                        "categoria": keyword,
+                        "categoria": "Amazon BR",
                     })
         except Exception as e:
-            log.error(f"Erro Amazon keyword {keyword}: {e}")
+            log.error(f"Erro Amazon {url}: {e}")
     return todos
 
 
@@ -86,15 +91,20 @@ def coletar_magalu() -> list[dict]:
     client = ApifyClient(APIFY_TOKEN)
     log.info("Coletando Magalu...")
     try:
-        run = client.actor("epctex~magazine-luiza-scraper").call(run_input={
-            "startUrls": [{"url": "https://www.magazineluiza.com.br/oferta-do-dia/"}],
-            "maxItems": 30,
+        run = client.actor("stealth_mode~magazineluiza-product-search-scraper").call(run_input={
+            "startUrls": [
+                "https://www.magazineluiza.com.br/busca/eletronicos/",
+                "https://www.magazineluiza.com.br/busca/esporte/",
+                "https://www.magazineluiza.com.br/busca/casa/",
+            ],
+            "maxItemsPerUrl": 10,
         })
         items = list(client.dataset(run["defaultDatasetId"]).iterate_items())
         result = []
         for i in items:
             try:
-                preco = float(str(i.get("price") or i.get("salePrice") or 0).replace("R$","").replace(".","").replace(",",".").strip())
+                preco_raw = i.get("price") or i.get("currentPrice") or i.get("salePrice") or 0
+                preco = float(str(preco_raw).replace("R$","").replace(".","").replace(",",".").strip())
             except:
                 preco = 0
             if preco > 0:
@@ -102,8 +112,8 @@ def coletar_magalu() -> list[dict]:
                     "fonte": "Magazine Luiza",
                     "nome": str(i.get("name") or i.get("title") or "")[:80],
                     "preco": preco,
-                    "preco_original": float(str(i.get("originalPrice") or preco).replace("R$","").replace(".","").replace(",",".").strip() or preco),
-                    "url": str(i.get("url") or ""),
+                    "preco_original": preco,
+                    "url": str(i.get("url") or i.get("productUrl") or ""),
                     "categoria": str(i.get("category") or ""),
                 })
         return result
@@ -117,29 +127,33 @@ def coletar_shopee() -> list[dict]:
     client = ApifyClient(APIFY_TOKEN)
     log.info("Coletando Shopee...")
     try:
-        run = client.actor("epctex~shopee-scraper").call(run_input={
-            "startUrls": [{"url": "https://shopee.com.br/flash_sale"}],
-            "maxItems": 30,
-            "country": "BR",
-        })
-        items = list(client.dataset(run["defaultDatasetId"]).iterate_items())
-        result = []
-        for i in items:
+        todos = []
+        for keyword in ["eletronicos", "esporte", "beleza"]:
             try:
-                preco_raw = i.get("price") or i.get("discountedPrice") or 0
-                preco = float(str(preco_raw).replace("R$","").replace(".","").replace(",",".").strip())
-            except:
-                preco = 0
-            if preco > 0:
-                result.append({
-                    "fonte": "Shopee",
-                    "nome": str(i.get("name") or i.get("title") or "")[:80],
-                    "preco": preco,
-                    "preco_original": preco,
-                    "url": str(i.get("url") or i.get("itemUrl") or ""),
-                    "categoria": str(i.get("catName") or i.get("category") or ""),
+                run = client.actor("gio21~shopee-scraper").call(run_input={
+                    "keyword": keyword,
+                    "country": "BR",
+                    "maxItems": 10,
                 })
-        return result
+                items = list(client.dataset(run["defaultDatasetId"]).iterate_items())
+                for i in items:
+                    try:
+                        preco_raw = i.get("price") or i.get("discountedPrice") or i.get("currentPrice") or 0
+                        preco = float(str(preco_raw).replace("R$","").replace(".","").replace(",",".").strip())
+                    except:
+                        preco = 0
+                    if preco > 0:
+                        todos.append({
+                            "fonte": "Shopee",
+                            "nome": str(i.get("name") or i.get("title") or "")[:80],
+                            "preco": preco,
+                            "preco_original": preco,
+                            "url": str(i.get("url") or i.get("itemUrl") or ""),
+                            "categoria": keyword,
+                        })
+            except Exception as e:
+                log.error(f"Erro Shopee keyword {keyword}: {e}")
+        return todos
     except Exception as e:
         log.error(f"Erro Shopee: {e}")
         return []
