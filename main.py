@@ -318,6 +318,10 @@ async def executar():
         log.warning("Nenhum produto coletado. Encerrando ciclo.")
         return
 
+    # Diagnóstico: mostrar primeiros 5 produtos com preços
+    for p in todos[:5]:
+        log.info(f"DIAG: {p['fonte']} | {p['nome'][:40]} | preco={p['preco']} | preco_orig={p['preco_original']}")
+
     # Calcula margem e filtra viáveis
     for p in todos:
         m = calcular_margem(p["preco"], p.get("preco_original", 0))
