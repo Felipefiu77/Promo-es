@@ -36,7 +36,7 @@ DAS_MENSAL        = 87.05
 PEDIDOS_MES       = int(os.getenv("PEDIDOS_MES", "40"))
 TAXA_ML_PCT       = 0.16       # Clássico
 TAXA_ML_FIXO      = 6.00
-MARGEM_MINIMA     = 0.15       # 15%
+MARGEM_MINIMA     = 0.05       # 5% (temporario para teste)
 
 # Categorias que você vende
 CATEGORIAS = [
@@ -54,9 +54,9 @@ def coletar_amazon() -> list[dict]:
     log.info("Coletando Amazon...")
     # URLs de busca da Amazon Brasil por categoria
     urls_amazon = [
-        "https://www.amazon.com.br/s?k=eletronicos&deals-widget=%257B%2522version%2522%253A1%257D",
-        "https://www.amazon.com.br/s?k=esporte+lazer&deals-widget=%257B%2522version%2522%253A1%257D",
-        "https://www.amazon.com.br/s?k=casa+jardim&deals-widget=%257B%2522version%2522%253A1%257D",
+        "https://www.amazon.com.br/s?k=eletronicos",
+        "https://www.amazon.com.br/s?k=esporte+lazer",
+        "https://www.amazon.com.br/s?k=casa+jardim",
     ]
     todos = []
     for url in urls_amazon:
