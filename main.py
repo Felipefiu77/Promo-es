@@ -122,6 +122,23 @@ def coletar_magalu() -> list[dict]:
         return []
 
 
+def parse_preco_shopee(preco_raw) -> float:
+    """
+    Normaliza preço vindo da Shopee.
+    A API da Shopee retorna o preço em centavos quando o valor já vem
+    como número (int/float), ex: 19900 = R$ 199,00. Nesse caso dividimos por 100.
+    Quando vem como string formatada (ex: "R$ 199,00"), fazemos o parse normal.
+    """
+    if isinstance(preco_raw, bool):
+        return 0
+    if isinstance(preco_raw, (int, float)):
+        return float(preco_raw) / 100
+    try:
+        return float(str(preco_raw).replace("R$", "").replace(".", "").replace(",", ".").strip())
+    except Exception:
+        return 0
+
+
 def coletar_shopee() -> list[dict]:
     """Coleta flash deals da Shopee via Apify."""
     client = ApifyClient(APIFY_TOKEN)
@@ -137,11 +154,8 @@ def coletar_shopee() -> list[dict]:
                 })
                 items = list(client.dataset(run["defaultDatasetId"]).iterate_items())
                 for i in items:
-                    try:
-                        preco_raw = i.get("price") or i.get("discountedPrice") or i.get("currentPrice") or 0
-                        preco = float(str(preco_raw).replace("R$","").replace(".","").replace(",",".").strip())
-                    except:
-                        preco = 0
+                    preco_raw = i.get("price") or i.get("discountedPrice") or i.get("currentPrice") or 0
+                    preco = parse_preco_shopee(preco_raw)
                     if preco > 0:
                         todos.append({
                             "fonte": "Shopee",
