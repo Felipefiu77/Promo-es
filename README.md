@@ -1,17 +1,31 @@
-# Agente de Promoções — MEI Comércio / Mercado Livre
+# Bot de Promoções — Amazon, Magalu, Shopee e Americanas
 
-Monitora promoções da Amazon, Magazine Luiza e Shopee a cada 2 horas,
-filtra os produtos com margem acima de 15% para revenda no ML (já descontando
-DAS R$ 87,05 e taxa ML 16% + R$ 6,00) e envia automaticamente no grupo do Telegram.
+Monitora ofertas nesses quatro marketplaces a cada 2 horas, guarda o histórico
+de preços no PostgreSQL e notifica no Telegram apenas promoções com desconto
+real (comparado à média de preço dos últimos 30 dias) e qualidade mínima
+garantida.
+
+---
+
+## Filtros aplicados
+
+- Preço atual até **R$ 2.000**
+- Desconto real ≥ **20%** sobre a média de preço dos últimos 30 dias
+- Nota mínima de **4.0** estrelas com pelo menos **50 avaliações**
+- Pelo menos **10 registros históricos** do produto antes de notificar (evita
+  notificar com base em pouquíssimos dados)
+- Suplementos e eletrônicos **sem marca identificada** são excluídos
+- Um produto só é notificado de novo se o preço cair **ainda mais** que da
+  última vez notificado (evita spam do mesmo produto a cada ciclo)
 
 ---
 
 ## Passo 1 — Criar o Bot no Telegram
 
 1. Abra o Telegram e procure por **@BotFather**
-2. Envie `/newbot` e escolha um nome (ex: `Agente ML Promoções`)
-3. Copie o token gerado (ex: `123456789:AAFxxx...`)
-4. Crie um grupo no Telegram e adicione o bot como membro
+2. Envie `/newbot` e escolha um nome
+3. Copie o token gerado
+4. Crie um grupo/canal no Telegram e adicione o bot como membro
 5. Para pegar o ID do grupo, acesse no navegador:
    `https://api.telegram.org/bot<SEU_TOKEN>/getUpdates`
    e copie o campo `"id"` dentro de `"chat"` (começa com `-100`)
@@ -20,10 +34,14 @@ DAS R$ 87,05 e taxa ML 16% + R$ 6,00) e envia automaticamente no grupo do Telegr
 
 ## Passo 2 — Criar conta no Apify
 
-1. Acesse https://apify.com e crie uma conta gratuita
+1. Acesse https://apify.com e crie uma conta
 2. Vá em **Settings → API & Integrations** e copie o token
-3. O plano gratuito oferece $5/mês de créditos — suficiente para testes
-4. Para uso contínuo a cada 2h, o plano Starter (~$49/mês) é recomendado
+3. Os actors usados por padrão (ajuste em `main.py` se necessário):
+   - Amazon: `dtrungtin/amazon-scraper`
+   - Magazine Luiza: `stealth_mode/magazineluiza-product-search-scraper`
+   - Shopee: `gio21/shopee-scraper`
+   - Americanas: `gio21/americanas-product-scraper` (VTEX Catalog API — não
+     retorna nota/avaliações, só preço, marca e nome)
 
 ---
 
@@ -31,16 +49,30 @@ DAS R$ 87,05 e taxa ML 16% + R$ 6,00) e envia automaticamente no grupo do Telegr
 
 1. Acesse https://console.anthropic.com
 2. Vá em **API Keys** e crie uma nova chave
-3. Copie e guarde com segurança
 
 ---
 
-## Passo 4 — Deploy no Railway
+## Passo 4 — Banco de dados PostgreSQL
 
-1. Crie conta em https://railway.app (plano Hobby ~$5/mês)
-2. Crie um novo projeto: **New Project → Deploy from GitHub repo**
-3. Conecte este repositório
-4. Vá em **Variables** e adicione todas as variáveis do `.env.example`
+O bot cria automaticamente as tabelas na primeira execução:
+
+- `produtos` — catálogo de produtos únicos por (fonte, url)
+- `historico_precos` — série histórica de preço/avaliação por produto
+- `notificacoes` — registro de cada notificação enviada (usado para
+  evitar reenvio e para dedução de desconto real)
+
+No Railway, adicione o plugin **PostgreSQL** ao projeto — a variável
+`DATABASE_URL` é criada automaticamente.
+
+---
+
+## Passo 5 — Deploy no Railway
+
+1. Crie conta em https://railway.app
+2. **New Project → Deploy from GitHub repo**
+3. Adicione o plugin **PostgreSQL**
+4. Em **Variables**, adicione todas as variáveis do `env.example`
+   (`DATABASE_URL` já vem preenchida pelo plugin)
 5. Configure o cron job em **Settings → Cron Jobs**:
    - Expressão: `0 */2 * * *` (executa a cada 2 horas)
 
@@ -49,53 +81,43 @@ DAS R$ 87,05 e taxa ML 16% + R$ 6,00) e envia automaticamente no grupo do Telegr
 ## Estrutura dos arquivos
 
 ```
-agente_promocoes/
+Promo-es/
 ├── main.py           # Script principal
 ├── requirements.txt  # Dependências Python
 ├── railway.toml      # Configuração Railway
-├── .env.example      # Modelo de variáveis de ambiente
+├── env.example       # Modelo de variáveis de ambiente
 └── README.md         # Este arquivo
 ```
 
 ---
 
-## Como o agente funciona
+## Como o bot funciona
 
 ```
 A cada 2 horas:
-  1. Coleta promoções → Amazon + Magalu + Shopee (via Apify)
-  2. Calcula margem → preco_compra → taxa ML (16% + R$6) → DAS rateado
-  3. Filtra → apenas produtos com margem > 15%
-  4. Analisa com IA → Claude avalia demanda e riscos de cada produto
-  5. Envia no Telegram → resumo + card formatado por produto
-```
-
----
-
-## Exemplo de mensagem no Telegram
-
-```
-━━━━━━━━━━━━━━━━━━━━━
-🤖 Agente ML — 10/06/2025 14:00
-Analisados: 87 | ✅ Aprovados: 6
-Filtro: margem > 15% após DAS R$87.05 e taxa ML
-━━━━━━━━━━━━━━━━━━━━━
-
-🛒 Fone Bluetooth XYZ
-📦 Fonte: Amazon
-💰 Compra: R$ 45.90
-🏷️ Venda sugerida ML: R$ 89.90
-📊 Margem líquida: 22.3% | ROI: 34.1%
-💡 Alta demanda no ML, categoria competitiva mas com volume alto de vendas.
-🔗 https://amazon.com.br/...
+  1. Coleta ofertas → Amazon + Magalu + Shopee + Americanas (via Apify)
+  2. Grava/atualiza cada produto e seu preço no PostgreSQL
+  3. Calcula desconto real → preço atual vs média de 30 dias
+  4. Filtra → preço, desconto, nota, avaliações, marca, histórico mínimo
+  5. Gera resumo de uma linha com a API Claude
+  6. Envia no Telegram com nome, preço, desconto real, resumo e link
 ```
 
 ---
 
 ## Ajustes no código
 
-Para mudar o filtro de margem mínima, edite `main.py`:
+Os principais parâmetros ficam no topo de `main.py`:
+
 ```python
-MARGEM_MINIMA = 0.15   # 15% → mude para 0.20 para exigir 20%
-PEDIDOS_MES   = 40     # estimativa de pedidos/mês para rateio do DAS
+PRECO_MAXIMO            = 2000.00
+DESCONTO_MINIMO_PCT     = 20.0
+AVALIACAO_MINIMA        = 4.0
+NUM_AVALIACOES_MINIMO   = 50
+MIN_HISTORICO_REGISTROS = 10
+JANELA_MEDIA_DIAS       = 30
 ```
+
+As URLs/keywords de busca de cada marketplace estão em
+`AMAZON_URLS_OFERTAS`, `MAGALU_URLS_OFERTAS`, `AMERICANAS_TERMOS_OFERTAS` e
+`SHOPEE_KEYWORDS_OFERTAS`.
