@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """
-Bot de Promocoes - Amazon, Magalu, Shopee e Americanas
+Bot de Promocoes - Amazon, Magalu e Shopee
 Monitora ofertas a cada 2h, guarda historico de precos no PostgreSQL e notifica
 no Telegram apenas descontos reais (vs média movel de 30 dias) com qualidade
 minima garantida (nota, avaliacoes e marca).
@@ -66,9 +66,6 @@ AMAZON_URLS_OFERTAS = [
 ]
 MAGALU_URLS_OFERTAS = [
     "https://www.magazineluiza.com.br/selecao/ofertasdodia/",
-]
-AMERICANAS_TERMOS_OFERTAS = [
-    "ofertas",
 ]
 SHOPEE_KEYWORDS_OFERTAS = [
     "oferta relampago",
@@ -209,27 +206,6 @@ def coletar_shopee() -> list[dict]:
             todos.extend(_normalizar_item(i, "Shopee", _parse_preco_shopee) for i in items)
         except Exception as e:
             log.error(f"Erro Shopee keyword {keyword}: {e}")
-    return todos
-
-
-def coletar_americanas() -> list[dict]:
-    # Nota: este actor (VTEX Catalog API) não retorna avaliação/num_avaliacoes,
-    # então produtos da Americanas nunca vão passar no filtro de nota mínima
-    # até que uma fonte com essa informação seja adicionada.
-    client = ApifyClient(APIFY_TOKEN)
-    log.info("Coletando Americanas...")
-    todos = []
-    for termo in AMERICANAS_TERMOS_OFERTAS:
-        try:
-            run = client.actor("gio21/americanas-product-scraper").call(run_input={
-                "searchTerm": termo,
-                "maxItems": MAX_ITENS_POR_FONTE,
-                "onlyAvailable": True,
-            })
-            items = list(client.dataset(run["defaultDatasetId"]).iterate_items())
-            todos.extend(_normalizar_item(i, "Americanas", _parse_preco_brl) for i in items)
-        except Exception as e:
-            log.error(f"Erro Americanas termo {termo}: {e}")
     return todos
 
 
@@ -466,7 +442,7 @@ async def executar():
     await garantir_schema(pool)
 
     todos: list[dict] = []
-    for fn in (coletar_amazon, coletar_magalu, coletar_shopee, coletar_americanas):
+    for fn in (coletar_amazon, coletar_magalu, coletar_shopee):
         try:
             itens = await asyncio.to_thread(fn)
             todos.extend(itens)

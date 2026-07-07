@@ -1,6 +1,6 @@
-# Bot de Promoções — Amazon, Magalu, Shopee e Americanas
+# Bot de Promoções — Amazon, Magalu e Shopee
 
-Monitora ofertas nesses quatro marketplaces a cada 2 horas, guarda o histórico
+Monitora ofertas nesses três marketplaces a cada 2 horas, guarda o histórico
 de preços no PostgreSQL e notifica no Telegram apenas promoções com desconto
 real (comparado à média de preço dos últimos 30 dias) e qualidade mínima
 garantida.
@@ -40,8 +40,6 @@ garantida.
    - Amazon: `dtrungtin/amazon-scraper`
    - Magazine Luiza: `stealth_mode/magazineluiza-product-search-scraper`
    - Shopee: `gio21/shopee-scraper`
-   - Americanas: `gio21/americanas-product-scraper` (VTEX Catalog API — não
-     retorna nota/avaliações, só preço, marca e nome)
 
 ---
 
@@ -95,7 +93,7 @@ Promo-es/
 
 ```
 A cada 2 horas:
-  1. Coleta ofertas → Amazon + Magalu + Shopee + Americanas (via Apify)
+  1. Coleta ofertas → Amazon + Magalu + Shopee (via Apify)
   2. Grava/atualiza cada produto e seu preço no PostgreSQL
   3. Calcula desconto real → preço atual vs média de 30 dias
   4. Filtra → preço, desconto, nota, avaliações, marca, histórico mínimo
@@ -119,5 +117,4 @@ JANELA_MEDIA_DIAS       = 30
 ```
 
 As URLs/keywords de busca de cada marketplace estão em
-`AMAZON_URLS_OFERTAS`, `MAGALU_URLS_OFERTAS`, `AMERICANAS_TERMOS_OFERTAS` e
-`SHOPEE_KEYWORDS_OFERTAS`.
+`AMAZON_URLS_OFERTAS`, `MAGALU_URLS_OFERTAS` e `SHOPEE_KEYWORDS_OFERTAS`.
