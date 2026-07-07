@@ -50,7 +50,7 @@ garantida.
 
 ---
 
-## Passo 4 — Banco de dados PostgreSQL
+## Passo 4 — Criar o banco PostgreSQL no Railway
 
 O bot cria automaticamente as tabelas na primeira execução:
 
@@ -59,8 +59,30 @@ O bot cria automaticamente as tabelas na primeira execução:
 - `notificacoes` — registro de cada notificação enviada (usado para
   evitar reenvio e para dedução de desconto real)
 
-No Railway, adicione o plugin **PostgreSQL** ao projeto — a variável
-`DATABASE_URL` é criada automaticamente.
+Você só precisa provisionar o banco vazio — o schema é criado pelo próprio
+`main.py` (`garantir_schema`) a cada execução, de forma idempotente.
+
+1. Acesse https://railway.app e abra o projeto onde o bot será hospedado
+   (ou crie um novo projeto primeiro, conforme o Passo 5)
+2. Clique em **+ New** (ou **Create** → **New**) dentro do projeto
+3. Selecione **Database → Add PostgreSQL**
+4. O Railway provisiona o banco em alguns segundos e cria automaticamente
+   um serviço "Postgres" no projeto, com a variável `DATABASE_URL` já
+   preenchida
+5. Para conferir/copiar a connection string:
+   - Clique no serviço **Postgres** criado
+   - Vá na aba **Variables**
+   - Copie o valor de `DATABASE_URL` (formato
+     `postgresql://usuario:senha@host:porta/banco`)
+6. Se o serviço do bot (`main.py`) estiver em um **serviço separado** do
+   Postgres dentro do mesmo projeto, use uma **variável de referência** em
+   vez de colar o valor fixo, para que ele sempre aponte para o banco
+   correto:
+   - No serviço do bot, vá em **Variables → New Variable**
+   - Nome: `DATABASE_URL`
+   - Valor: `${{Postgres.DATABASE_URL}}` (troque `Postgres` pelo nome exato
+     do serviço de banco, visível na aba do projeto)
+7. Faça o redeploy do serviço do bot para que a variável seja aplicada
 
 ---
 
@@ -68,9 +90,11 @@ No Railway, adicione o plugin **PostgreSQL** ao projeto — a variável
 
 1. Crie conta em https://railway.app
 2. **New Project → Deploy from GitHub repo**
-3. Adicione o plugin **PostgreSQL**
-4. Em **Variables**, adicione todas as variáveis do `env.example`
-   (`DATABASE_URL` já vem preenchida pelo plugin)
+3. Adicione o plugin **PostgreSQL** conforme o Passo 4, se ainda não tiver
+   feito
+4. Em **Variables** do serviço do bot, adicione todas as variáveis do
+   `env.example` (`APIFY_TOKEN`, `ANTHROPIC_API_KEY`, `TELEGRAM_TOKEN`,
+   `TELEGRAM_CHAT_ID`, `DATABASE_URL`)
 5. Configure o cron job em **Settings → Cron Jobs**:
    - Expressão: `0 */2 * * *` (executa a cada 2 horas)
 
